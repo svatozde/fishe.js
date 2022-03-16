@@ -10,7 +10,7 @@ let top_riht = null;
 
 let fish_groups = null;
 
-const FISH_NUMBER = 800;
+const FISH_NUMBER = 200;
 const FISH_SIZE = 15;
 
 
@@ -40,27 +40,11 @@ function init() {
   obstacles.push(new Line(top_left, bot_left));
 
 
-  //spiral
-
-  let lastX = maxX * 0.2
-  let lastY = maxY * 0.2
-  for (let i = 1; i < 6; i++) {
-    if (i % 2 === 0) {
-
-    } else if (i % 3 === 0) {
-
-    } else if (i % 4 === 0) {
-
-    } else {
-
-    }
-
-  }
-
-
   const thicc = 200
   const hmol = 300
-  for (let i = 1; i < 5; i++) {
+
+  /*
+  for (let i = 1; i < 4; i++) {
     let a = new Vector(i * (maxX / 5) + thicc, hmol);
     let b = new Vector(i * (maxX / 5) + thicc, maxY - hmol);
     let d = new Vector(i * (maxX / 5) - thicc, hmol);
@@ -70,16 +54,24 @@ function init() {
     obstacles.push(new Line(b, c));
     obstacles.push(new Line(c, d));
     obstacles.push(new Line(d, a));
-  }
+  }*/
+
+
+
+
+
+
 
 
 
   fish_groups = []
-  //fish_groups.push(new FishTank(ctx, obstacles, "#0000FF", {x: maxX/2, y: maxY/2}));
-  //fish_groups.push(new FishTank(ctx, obstacles, "#00FF00",  {x: (maxX/2)+thicc, y: maxY/2}));
-  //fish_groups.push(new FishTank(ctx, obstacles, "#FF0000",  {x: (maxX/2)-thicc, y: maxY/2}));
+  fish_groups.push(new FishTank(ctx, obstacles, "#FF00FF", null));
+  fish_groups.push(new FishTank(ctx, obstacles, "#0000FF", null));
+  //fish_groups.push(new FishTank(ctx, obstacles, "#00FFFF", null));
+  //fish_groups.push(new FishTank(ctx, obstacles, "#00FF00",  null));
+  //fish_groups.push(new FishTank(ctx, obstacles, "#FF0000",  null));
   //fish_groups.push(new FishTank(ctx, obstacles, "#FF00FF",  {x: (maxX/2)+5*thicc, y: maxY/2}));
-  fish_groups.push(new FishTank(ctx, obstacles, "#00FFFF",  {x: (maxX/2)-5*thicc, y: maxY/2}));
+  //fish_groups.push(new FishTank(ctx, obstacles, "#00FFFF",  {x: (maxX/2)-5*thicc, y: maxY/2}));
 }
 
 
@@ -110,7 +102,7 @@ class FishTank {
     for (let i = 0; i < FISH_NUMBER; i++) {
       let pos = null
       if(position){
-        pos = new Vector(position.x, position.y)
+        pos = new Vector(position.x, position.y).add(Vector.randomPosition(10,10))
       }else{
         pos = Vector.randomPosition(maxX, maxY)
       }
@@ -263,7 +255,7 @@ class Fish {
     this.pos = init_pos; //Vector
     this.vel = init_vel; //Vector
     this.turn_angle = getRandomInt(-3, 3);
-    this.friend_distance = getRandomInt(0, 50);
+    this.friend_distance = getRandomInt(20,70);
     this.tank = tank;
     this.friends = [];
     this.randomColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
@@ -272,7 +264,7 @@ class Fish {
     this.nearest = null;
     this.obstackle = null;
 
-    this.speed = getRandomInt(2, 5);
+    this.speed = getRandomInt(1,10);
     this.random_tick = getRandomInt(3, 6);
   }
 
@@ -288,33 +280,82 @@ class Fish {
     this.friends = friends;
   }
 
-  move(tick) {
-    if (tick % this.random_tick === 0) {
-      this.turn_angle = getRandomInt(-3, 3);
+  //find vector to center
+  cohesion(){
+    if(this.friends.length > 0) {
+      let center = new Vector(0, 0);
+      for (const friend of this.friends) {
+        center = center.add(friend.pos);
+      }
+      center = center.scale(1/this.friends.length)
+      return center.subtract(this.pos).normalize();
     }
-    this.vel = this.vel.rotate(this.turn_angle).normalize();
+    return null;
+  }
+
+  alignment(){
+    if(this.friends.length > 0) {
+      let center = new Vector(0, 0);
+      for (const friend of this.friends) {
+        center = center.add(friend.vel);
+      }
+
+      return center.scale(1/this.friends.length).normalize();
+    }
+    return null;
+  }
+
+  separation(){
+    if(this.friends.length > 0) {
+      let away = new Vector(0, 0);
+      for (const friend of this.friends) {
+        away = away.add(this.pos.subtract(friend.pos));
+      }
+      return away.normalize();
+    }
+    return null;
+  }
+
+  a_speed(){
+    if(this.friends.length > 0) {
+      let speed = 0;
+      for (const friend of this.friends) {
+         speed+=friend.speed;
+      }
+      return speed/this.friends.length;
+    }
+    return null;
+  }
+
+  move(tick) {
+
+    let cohesion = this.cohesion();
+    if(cohesion){
+      let alignment = this.alignment();
+      let separ = this.separation();
+      this.vel = alignment.scale(2.5)
+        .add(cohesion)
+        .add(separ.scale(1.1)).normalize()
+        .add(Vector.randomDirection().scale(0.1))
+
+        .normalize();
+
+      let aspeed = this.a_speed();
+      this.speed = (5*this.speed + aspeed)/6;
+
+    }
+
     this.check_collision();
     if (!this.collision) {
-      this.pos = this.pos.add(this.vel);
+      this.pos = this.pos.add(this.vel.scale(this.speed));
     } else {
-
-        if (this.pos.distance(this.nearest) > FISH_SIZE + this.speed + 10) {
-          const tvel = this.collision.subtract(this.nearest).scale(100);
-          this.vel = this.vel.add(tvel).normalize()
-        } else {
-          //bounce
-          let norm = this.obstackle.a.subtract(this.obstackle.b)
-          let dot = this.vel.x * norm.x + this.vel.y * norm.y;
-          let vnewx = this.vel.x - 2 * dot * norm.x;
-          let vnewy = this.vel.y - 2 * dot * norm.y;
-          this.vel = new Vector(vnewx, vnewy).normalize();
-        }
-
-        if(this.check_collision()){
-          return
-        }
+      const cit = 200
+      if (this.pos.distance(this.collision) < 200 || this.pos.distance(this.nearest) < 50) {
+        const tvel = this.pos.subtract(this.nearest).scale(100);
+        this.vel = this.vel.add(tvel).normalize()
+      }
     }
-    this.pos = this.pos.add(this.vel.scale(this.speed));
+
   }
 
   check_collision() {
@@ -357,30 +398,30 @@ class Fish {
   }
 
   draw(tick) {
-    //const length = FISH_SIZE * 2;
-    //let tail = this.pos.subtract(this.vel.scale(length));
+    const length = 40;
+    let tail = this.pos.subtract(this.vel.scale(length));
 
 
     const x1 = this.pos.x;
     const y1 = this.pos.y;
-    //const x2 = tail.x;
-    //const y2 = tail.y;
+    const x2 = tail.x;
+    const y2 = tail.y;
 
     const cctx = this.tank.ctx;
 
-    //drawSinline(cctx, pos, tail, tick);
-    cctx.globalAlpha  = 0.2;
+    //cctx.globalAlpha  = 0.2;
     cctx.fillStyle = this.tank.color;
     cctx.strokeStyle = "#000000";
     cctx.beginPath();
     cctx.arc(x1, y1, FISH_SIZE, 0, 2 * Math.PI);
     cctx.fill();
 
-    //cctx.strokeStyle = "#000000";
-    //cctx.beginPath();
-    //cctx.moveTo(x1, y1);
-    //cctx.lineTo(x2, y2);
-    //cctx.stroke();
+    cctx.strokeStyle = "#000000";
+    cctx.lineWidth = 6;
+    cctx.beginPath();
+    cctx.moveTo(x1, y1);
+    cctx.lineTo(x2, y2);
+    cctx.stroke();
 
     /*
     if (this.collision) {
@@ -396,8 +437,8 @@ class Fish {
       cctx.lineTo(this.nearest.x, this.nearest.y);
       cctx.stroke();
     }
- */
-    cctx.lineWidth = 4;
+  */
+    cctx.lineWidth = 3;
     for (const friend of this.friends) {
       cctx.strokeStyle = this.randomColor;
       cctx.beginPath();
@@ -405,7 +446,7 @@ class Fish {
       cctx.lineTo(friend.pos.x, friend.pos.y);
       cctx.stroke();
     }
-    cctx.lineWidth = 1;
+
 
   }
 
@@ -439,6 +480,9 @@ class Vector {
     this.y = y;
   }
 
+  invert(){
+    return new Vector(-this.x, -this.y)
+  }
 
   scale(scalar) {
     return new Vector(this.x * scalar, this.y * scalar);
@@ -497,7 +541,7 @@ class Vector {
   }
 
   static randomDirection() {
-    return new Vector(getRandomFloat(-1, 1), getRandomFloat(-1, 1)).normalize();
+    return new Vector(getRandomFloat(-100, 100), getRandomFloat(-100, 100)).normalize();
   }
 
   static randomPosition(maxX, maxY) {
