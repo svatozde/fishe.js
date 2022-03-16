@@ -10,7 +10,7 @@ let top_riht = null;
 
 let fish_groups = null;
 
-const FISH_NUMBER = 200;
+const FISH_NUMBER = 1200
 const FISH_SIZE = 15;
 
 
@@ -66,8 +66,8 @@ function init() {
 
   fish_groups = []
   fish_groups.push(new FishTank(ctx, obstacles, "#FF00FF", null));
-  fish_groups.push(new FishTank(ctx, obstacles, "#0000FF", null));
-  //fish_groups.push(new FishTank(ctx, obstacles, "#00FFFF", null));
+  fish_groups.push(new FishTank(ctx, obstacles, "#00FFFF", null));
+  fish_groups.push(new FishTank(ctx, obstacles, "#FFF501", null));
   //fish_groups.push(new FishTank(ctx, obstacles, "#00FF00",  null));
   //fish_groups.push(new FishTank(ctx, obstacles, "#FF0000",  null));
   //fish_groups.push(new FishTank(ctx, obstacles, "#FF00FF",  {x: (maxX/2)+5*thicc, y: maxY/2}));
@@ -335,25 +335,29 @@ class Fish {
       let separ = this.separation();
       this.vel = alignment.scale(2.5)
         .add(cohesion)
-        .add(separ.scale(1.1)).normalize()
-        .add(Vector.randomDirection().scale(0.1))
-
+        .add(separ.scale(1.5)).normalize()
+        .add(Vector.randomDirection().scale(0.08))
         .normalize();
 
       let aspeed = this.a_speed();
       this.speed = (5*this.speed + aspeed)/6;
 
+    }else{
+      if(tick%this.random_tick===0){
+        this.turn_angle = getRandomInt(-15,15);
+        this.speed = getRandomInt(6,10);
+        this.vel = this.vel.rotate(this.turn_angle)
+        this.pos = this.pos.add(this.vel.scale(this.speed));
+      }
     }
 
     this.check_collision();
     if (!this.collision) {
       this.pos = this.pos.add(this.vel.scale(this.speed));
     } else {
-      const cit = 200
-      if (this.pos.distance(this.collision) < 200 || this.pos.distance(this.nearest) < 50) {
-        const tvel = this.pos.subtract(this.nearest).scale(100);
+        const tvel = this.pos.subtract(this.nearest).scale(0.1);
         this.vel = this.vel.add(tvel).normalize()
-      }
+        this.pos = this.pos.add(this.vel.scale(this.speed));
     }
 
   }
@@ -362,7 +366,7 @@ class Fish {
     this.collision = null;
     this.nearest = null;
     this.obstackle = null;
-    const col_dist = 20;
+    const col_dist = 500;
     const col_point = this.pos.add(this.vel.scale(col_dist));
     const col_line = new Line(this.pos, col_point);
 
@@ -409,14 +413,14 @@ class Fish {
 
     const cctx = this.tank.ctx;
 
-    //cctx.globalAlpha  = 0.2;
+    cctx.globalAlpha  = 0.5;
     cctx.fillStyle = this.tank.color;
-    cctx.strokeStyle = "#000000";
+    cctx.strokeStyle = this.tank.color;
     cctx.beginPath();
     cctx.arc(x1, y1, FISH_SIZE, 0, 2 * Math.PI);
     cctx.fill();
 
-    cctx.strokeStyle = "#000000";
+    cctx.strokeStyle = this.tank.color;
     cctx.lineWidth = 6;
     cctx.beginPath();
     cctx.moveTo(x1, y1);
@@ -424,28 +428,32 @@ class Fish {
     cctx.stroke();
 
     /*
-    if (this.collision) {
-      cctx.beginPath();
-      cctx.moveTo(this.pos.x, this.pos.y);
-      cctx.lineTo(this.collision.x, this.collision.y);
-      cctx.stroke();
-    }
+        if (this.collision) {
+          cctx.strokeStyle = "#000000";
+          cctx.beginPath();
+          cctx.moveTo(this.pos.x, this.pos.y);
+          cctx.lineTo(this.collision.x, this.collision.y);
+          cctx.stroke();
+        }
 
-    if (this.nearest) {
-      cctx.beginPath();
-      cctx.moveTo(this.pos.x, this.pos.y);
-      cctx.lineTo(this.nearest.x, this.nearest.y);
-      cctx.stroke();
-    }
-  */
-    cctx.lineWidth = 3;
-    for (const friend of this.friends) {
-      cctx.strokeStyle = this.randomColor;
-      cctx.beginPath();
-      cctx.moveTo(this.pos.x, this.pos.y);
-      cctx.lineTo(friend.pos.x, friend.pos.y);
-      cctx.stroke();
-    }
+        if (this.nearest) {
+          cctx.strokeStyle = "#000000";
+          cctx.beginPath();
+          cctx.moveTo(this.pos.x, this.pos.y);
+          cctx.lineTo(this.nearest.x, this.nearest.y);
+          cctx.stroke();
+        }
+
+          cctx.lineWidth = 3;
+          for (const friend of this.friends) {
+
+            cctx.beginPath();
+            cctx.moveTo(this.pos.x, this.pos.y);
+            cctx.lineTo(friend.pos.x, friend.pos.y);
+            cctx.stroke();
+          }
+
+           */
 
 
   }
